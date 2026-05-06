@@ -2,12 +2,12 @@
  * Veicolo Sales Agent — Entry point
  *
  * Conecta WhatsApp, registra handlers, y mantiene el bot corriendo 24/7
+ * Corre como worker (sin puerto HTTP) en Railway
  */
 
 import dotenv from 'dotenv';
 dotenv.config();
 
-import http from 'http';
 import { conectarWhatsApp, onMessage } from './bot/connection';
 import { handleMensaje } from './bot/handler';
 
@@ -32,41 +32,16 @@ if (missing.length > 0) {
   process.exit(1);
 }
 
-/** Health check server para Railway */
-const PORT = parseInt(process.env.PORT || '3000');
-const startTime = Date.now();
-
-const server = http.createServer((req, res) => {
-  if (req.url === '/health' || req.url === '/') {
-    const uptime = Math.floor((Date.now() - startTime) / 1000);
-    res.writeHead(200, { 'Content-Type': 'application/json' });
-    res.end(JSON.stringify({
-      status: 'ok',
-      service: 'veicolo-sales-agent',
-      uptime: `${uptime}s`,
-      timestamp: new Date().toISOString()
-    }));
-  } else {
-    res.writeHead(404);
-    res.end();
-  }
-});
-
 /** Arranque principal */
 async function main() {
   try {
     console.log('🚀 Iniciando Veicolo Sales Agent...\n');
 
-    // 1. Levantar health check server (Railway necesita un puerto)
-    server.listen(PORT, () => {
-      console.log(`🌐 Health check en puerto ${PORT}`);
-    });
-
-    // 2. Registrar handler de mensajes
+    // 1. Registrar handler de mensajes
     onMessage(handleMensaje);
     console.log('📨 Handler de mensajes registrado');
 
-    // 3. Conectar WhatsApp
+    // 2. Conectar WhatsApp
     console.log('📱 Conectando a WhatsApp...\n');
     await conectarWhatsApp();
 
